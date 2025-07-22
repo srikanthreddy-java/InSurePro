@@ -1,0 +1,218 @@
+databaseChangeLog:
+  - changeSet:
+        id: create-insurepro-schema
+        author: Srikanth Reddy
+        changes:
+          - sql:
+              sql: |
+                CREATE SCHEMA IF NOT EXISTS insurepro;
+              description: |
+                create schema insurepro if it does not exist.
+  - changeSet:
+      id: 001-create-users-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.users (
+                user_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(150) UNIQUE NOT NULL,
+                full_name VARCHAR(150),
+                dob DATE,
+                gender ENUM('MALE', 'FEMALE', 'OTHER'),
+                phone_number VARCHAR(20),
+                address TEXT,
+                role ENUM('USER', 'ADMIN', 'UNDERWRITER'),
+                status ENUM('ACTIVE', 'INACTIVE', 'BLOCKED') DEFAULT 'ACTIVE',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+              );
+            description: |
+              Create users table with fields for user_id, username, password, email, full_name, dob and etc.
+              
+  - changeSet:
+      id: 001-create-policies-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.policies (
+              policy_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              policy_code VARCHAR(20) UNIQUE,
+              name VARCHAR(100),
+              policy_type ENUM('HEALTH', 'VEHICLE', 'LIFE', 'TRAVEL'),
+              description TEXT,
+              base_premium DECIMAL(10,2),
+              min_age INT,
+              max_age INT,
+              max_coverage_amount DECIMAL(15,2),
+              requires_medical BOOLEAN DEFAULT FALSE,
+              created_by BIGINT,
+              created_at TIMESTAMP,
+              FOREIGN KEY (created_by) REFERENCES users(user_id)
+              );
+            description: |
+                Create policies table with fields for policy_id, policy_code, name, policy_type, description and etc.
+
+  - changeSet:
+      id: 001-create-policy_features-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.policy_features (
+              feature_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              policy_id BIGINT,
+              feature_name VARCHAR(100),
+              feature_description TEXT,
+              is_mandatory BOOLEAN,
+              FOREIGN KEY (policy_id) REFERENCES policies(policy_id)
+              );
+          description: |
+              Create policy_features table with fields for feature_id, policy_id, feature_name, feature_description and etc.
+
+  - changeSet:
+      id: 001-create-policy_documents-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.policy_documents (
+              document_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              policy_id BIGINT,
+              document_type ENUM('TERMS_AND_CONDITIONS', 'BROCHURE', 'CLAIM_FORM'),
+              s3_url VARCHAR(255),
+              uploaded_at TIMESTAMP,
+              FOREIGN KEY (policy_id) REFERENCES policies(policy_id)
+              );
+
+            description: |
+              Create policy_documents table with fields for document_id, policy_id, document_type, s3_url and etc.
+
+  - changeSet:
+      id: 001-create-policy_purchase-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.policy_purchase (
+              purchase_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              user_id BIGINT,
+              policy_id BIGINT,
+              policy_version INT DEFAULT 1,
+              purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              start_date DATE,
+              end_date DATE,
+              premium_paid DECIMAL(10,2),
+              payment_status ENUM('PENDING', 'PAID', 'FAILED') DEFAULT 'PENDING',
+              payment_reference VARCHAR(100),
+              FOREIGN KEY (user_id) REFERENCES users(user_id),
+              FOREIGN KEY (policy_id) REFERENCES policies(policy_id)
+              );
+
+            description: |
+              Create policy_purchase table with fields for purchase_id, user_id, policy_id, policy_version, purchase_date and etc.
+
+  - changeSet:
+      id: 001-create-nominees-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.nominees (
+              nominee_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              purchase_id BIGINT,
+              full_name VARCHAR(150),
+              relationship ENUM('SPOUSE', 'PARENT', 'CHILD', 'FRIEND', 'OTHER'),
+              dob DATE,
+              share_percentage DECIMAL(5,2),
+              contact_number VARCHAR(20),
+              FOREIGN KEY (purchase_id) REFERENCES policy_purchase(purchase_id)
+              );
+
+            description: |
+              Create nominees table with fields for nominee_id, purchase_id, full_name, relationship, dob and etc.
+
+  - changeSet:
+      id: 001-create-claims-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.claims (
+              claim_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              purchase_id BIGINT,
+              claim_type ENUM('ACCIDENT', 'HOSPITALIZATION', 'DEATH', 'DAMAGE'),
+              claim_status ENUM('PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'ESCALATED') DEFAULT 'PENDING',
+              claim_amount DECIMAL(15,2),
+              approved_amount DECIMAL(15,2),
+              rejection_reason TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (purchase_id) REFERENCES policy_purchase(purchase_id)
+              );
+
+            description: |
+              Create claims table with fields for claim_id, purchase_id, claim_type, claim_status, claim_amount and etc.
+
+  - changeSet:
+      id: 001-create-claim_documents-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.claim_documents (
+              document_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              claim_id BIGINT,
+              document_type ENUM('MEDICAL_REPORT', 'BILL', 'FIR_COPY', 'ID_PROOF', 'OTHERS'),
+              s3_url VARCHAR(255),
+              uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (claim_id) REFERENCES claims(claim_id)
+              );
+
+
+            description: |
+              Create claim_documents table with fields for document_id, claim_id, document_type, s3_url and etc.
+
+  - changeSet:
+      id: 001-create-audit_logs-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.audit_logs (
+              audit_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              user_id BIGINT,
+              action VARCHAR(255),
+              entity VARCHAR(100),
+              entity_id BIGINT,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              old_value TEXT,
+              new_value TEXT,
+              FOREIGN KEY (user_id) REFERENCES users(user_id)
+              );
+
+
+            description: |
+              Create audit_logs table with fields for audit_id, user_id, action, entity, entity_id, timestamp, old_value and new_value.
+
+  - changeSet:
+      id: 001-create-notifications-table
+      author: Srikanth Reddy
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE insurepro.notifications (
+              notification_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              user_id BIGINT,
+              message TEXT,
+              notification_type ENUM('EMAIL', 'SMS', 'IN_APP'),
+              status ENUM('SENT', 'FAILED', 'PENDING'),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(user_id)
+              );
+
+            description: |
+              Create notifications table with fields for notification_id, user_id, message, notification_type, status and etc.
+

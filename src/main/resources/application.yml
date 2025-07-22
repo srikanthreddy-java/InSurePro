@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: insurepro
+  datasource:
+    url: jdbc:mysql://localhost:3306/defaultdb?useSSL=false
+    username: root
+    password: Srik@nth
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10  # HikariCP connection pool size
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Schema auto-update (use 'none' in production)
+    show-sql: true      # Log SQL queries
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true  # Pretty-print SQL
+        jdbc:
+          lob:
+            non_contextual_creation: true  # Fixes LOB warnings in MySQL 8+
+
+  # Optional: Liquibase (if using database migrations)
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yml
